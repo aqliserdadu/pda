@@ -97,22 +97,83 @@ async function updateLatestData() {
 
 
 // Fungsi untuk merender grafik histori
+// async function renderHistoryChart() {
+//     const param = document.getElementById('param-select').value;
+//     const range = document.getElementById('time-range').value;
+    
+//     try {
+//         const res = await fetch(`/api/history?param=${param}&range=${range}`);
+//         const data = await res.json();
+
+//         const trace = {
+//             x: data.timestamps,
+//             y: data.values,
+//             type: 'scatter',
+//             mode: 'lines+markers',
+//             name: param.toUpperCase(),
+//             line: { shape: 'spline', color: '#0074D9', width: 2 },
+//             marker: { size: 4 }
+//         };
+
+//         const layout = {
+//             margin: { t: 40, b: 70, l: 50, r: 20 },
+//             title: `History of ${param.toUpperCase()}`,
+//             xaxis: { title: 'Waktu', tickangle: -45, tickformat: "%Y-%m-%d<br>%H:%M" },
+//             yaxis: { title: 'Nilai' },
+//             plot_bgcolor: '#fafafa',
+//             paper_bgcolor: '#fff'
+//         };
+//       // === PERBAIKAN: Menggunakan Plotly.react untuk update yang lebih andal ===
+//       Plotly.react("dataChart", [trace], layout, {responsive: true});
+
+//     } catch (err) {
+//         console.error("Gagal render grafik:", err);
+//     }
+// }
+
+
+
 async function renderHistoryChart() {
     const param = document.getElementById('param-select').value;
     const range = document.getElementById('time-range').value;
-    
+
     try {
         const res = await fetch(`/api/history?param=${param}&range=${range}`);
         const data = await res.json();
 
+        const timestamps = data.timestamps;
+        const values = data.values;
+
+        // Konversi ke array baru dengan null untuk gap > 3 menit
+        const processedX = [];
+        const processedY = [];
+
+        for (let i = 0; i < timestamps.length; i++) {
+            processedX.push(timestamps[i]);
+            processedY.push(values[i]);
+
+            if (i < timestamps.length - 1) {
+                const currentTime = new Date(timestamps[i]);
+                const nextTime = new Date(timestamps[i + 1]);
+                const diffMinutes = (nextTime - currentTime) / 1000 / 60;
+
+                if (diffMinutes > 3) {
+                    // Tambahkan titik null untuk membuat gap
+                    processedX.push(nextTime); // posisi waktu berikutnya
+                    processedY.push(null);     // null membuat garis terputus
+                }
+            }
+        }
+
         const trace = {
-            x: data.timestamps,
-            y: data.values,
+            x: processedX,
+            y: processedY,
             type: 'scatter',
             mode: 'lines+markers',
             name: param.toUpperCase(),
             line: { shape: 'spline', color: '#0074D9', width: 2 },
-            marker: { size: 4 }
+            marker: { size: 4 },
+            connectgaps: false // Pastikan tidak menghubungkan titik null
         };
 
         const layout = {
@@ -123,8 +184,8 @@ async function renderHistoryChart() {
             plot_bgcolor: '#fafafa',
             paper_bgcolor: '#fff'
         };
-      // === PERBAIKAN: Menggunakan Plotly.react untuk update yang lebih andal ===
-      Plotly.react("dataChart", [trace], layout, {responsive: true});
+
+        Plotly.react("dataChart", [trace], layout, { responsive: true });
 
     } catch (err) {
         console.error("Gagal render grafik:", err);
